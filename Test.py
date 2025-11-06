@@ -1,6 +1,9 @@
 # Import the new pandas_handler module
 import pandas_handler as ph
 import pandas as pd
+import SQL_Handler
+
+print(SQL_Handler.data_selection("Students", "*", "Students.gender = \'M\'", "Academic"))
 
 # Set pandas to display all columns (optional, but helpful)
 pd.set_option('display.max_columns', None)
