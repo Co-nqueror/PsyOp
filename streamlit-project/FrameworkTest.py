@@ -38,6 +38,8 @@ if "db_conn" not in st.session_state:
     st.session_state.db_conn = sqlite3.connect(st.session_state.db_path, check_same_thread=False)
 if "global_df" not in st.session_state:
     st.session_state.global_df = ""
+if "global_table" not in st.session_state:
+    st.session_state.global_table = ""
 with tutorial:
     st.header("Welcome to PsyOp!")
     st.text("This is an application used to study and analyze mental health data collected from college student. This page will teach you how to use our application to your full advantage.")
@@ -47,32 +49,32 @@ with tutorial:
         st.text("Our data is organized into four tables:")
         st.text("""
             Students
-                    • student_id
-                    • age
-                    • gender
+                    •   student_id
+                    •    age
+                    •   gender
             Academic
-                    • student_id
-                    • academic_performance 
-                    • study_load
-                    • teacher_student_relationship
-                    • future_career_concerns
+                    •   student_id
+                    •   academic_performance 
+                    •   study_load
+                    •   teacher_student_relationship
+                    •   future_career_concerns
             Psychological
-                    • student_id
-                    • anxiety_level
-                    • self_esteem
-                    • mental_health_history
-                    • depression
+                    •   student_id
+                    •   anxiety_level
+                    •   self_esteem
+                    •   mental_health_history
+                    •   depression
             Physiological
-                    • student_id
-                    • blood_pressure
-                    • breathing_problem
-                    • sleep_quality
-                    • headache
+                    •   student_id
+                    •   blood_pressure
+                    •   breathing_problem
+                    •   sleep_quality
+                    •   headache
         """)
         st.text("We'll break down further what each data piece means table by table")
         st.subheader("Students")
-        st.text("• The student_id is arbitrary and does not have any meaning, it is just the primary key that connects the data and keeps track of it.")
-        st.text("• age is in years. The default dataset we provide only includes ages 18-22.")
+        st.text("•  The student_id is arbitrary and does not have any meaning, it is just the primary key that connects the data and keeps track of it.")
+        st.text("•  age is in years. The default dataset we provide only includes ages 18-22.")
         st.text("""• gender has four options for the sake of simplicity:
             • 'M' for Male
             • 'F' for Female
@@ -80,30 +82,61 @@ with tutorial:
             • 'O' for Other""")
         st.subheader("Academic")
         st.text("Academic is graded on a 0-5 scale where 0 is \"Not at all\" and 5 is \"Extremely\"")
-        st.text("• student_id")
-        st.text("• academic_performance: Do you lack confidence in your academic performance?")
-        st.text("• study_load: Do you feel overwhelmed with your academic workload?")
-        st.text("• teacher_student_relationship: Are you facing any difficulties with your professors or instructors?")
-        st.text("• future_career_concerns: Do you lack confidence in your choice of academic subjects?")
+        st.text("•  student_id")
+        st.text("•  academic_performance: Do you lack confidence in your academic performance?")
+        st.text("•  study_load: Do you feel overwhelmed with your academic workload?")
+        st.text("•  teacher_student_relationship: Are you facing any difficulties with your professors or instructors?")
+        st.text("•  future_career_concerns: Do you lack confidence in your choice of academic subjects?")
         st.subheader("Psychological")
         st.text("Psychological is measured using various official medical assesment tools which range in scale.")
-        st.text("• student_id")
-        st.text("• anxiety_level: Measured using GAD-7 (Generalized Anxiety Disorder-7) scale.")
-        st.text("• self_esteem: Assessed via Rosenberg Self-Esteem scale.")
-        st.text("• mental_health_history: Either 1 or 0, 1 meaning yes and 0 meaning no.")
-        st.text("• depression: Assesed via PHQ-9 (Patient Health Questionnaire-9).")
+        st.text("•  student_id")
+        st.text("•  anxiety_level: Measured using GAD-7 (Generalized Anxiety Disorder-7) scale.")
+        st.text("•  self_esteem: Assessed via Rosenberg Self-Esteem scale.")
+        st.text("•  mental_health_history: Either 1 or 0, 1 meaning yes and 0 meaning no.")
+        st.text("•  depression: Assesed via PHQ-9 (Patient Health Questionnaire-9).")
         st.subheader("Physiological")
         st.text("Physiological is graded on a 0-5 scale where 0 is \"Not at all\" and 5 is \"Extremely\"")
-        st.text("• student_id")
-        st.text("• blood_pressure: \"Have you noticed a rapid heartbeat or palpitations?\"")
-        st.text("• breathing_problem: \"Do you face any problems or difficulties breathing?\"")
-        st.text("• sleep_quality: \"Do you face any sleep problems or difficulties falling asleep?\"")
-        st.text("• headache: \"Have you been getting headaches more often than usual?\"")
+        st.text("•  student_id")
+        st.text("•  blood_pressure: \"Have you noticed a rapid heartbeat or palpitations?\"")
+        st.text("•  breathing_problem: \"Do you face any problems or difficulties breathing?\"")
+        st.text("•  sleep_quality: \"Do you face any sleep problems or difficulties falling asleep?\"")
+        st.text("•  headache: \"Have you been getting headaches more often than usual?\"")
         st.subheader("Where our schema is from")
         st.text("Our schema is based of an imputation of the national health survey of college students")
         st.text("This imputation was collected by research students from Kaggle here: https://www.kaggle.com/datasets/mdsultanulislamovi/student-stress-monitoring-datasets/data")
         st.text("Those students go deeper into their study of the data here which does a much better job of explaining the rationale behind the schema: https://arxiv.org/abs/2508.01105")
-
+        st.subheader("Uploading your dataset")
+        st.text("In order to upload data to the application, it must be of the exact same schema as the schema previously referenced down to the letter. If not, the app will reject it.")
+        st.text("We provide the option to make a blank dataset of the schema or a duplication of the dataset we worked with under Data Management>DataView.")
+        st.text("We know this is very rigid and limiting to larger more nuanced research and we are working to make it more flexible.")
+    with data_filtering:
+        st.subheader("Choosing your tables")
+        st.text("For the tables, you are allowed to pick one active table and one join table, joined on the student_id")
+        st.subheader("Making conditions")
+        st.text("You can use the conditions slider to add or remove the number of coniditons")
+        st.text("The not checkbox will just do the opposite of whatever condition you've wrote.")
+        st.text("The first operand is the different columns you can choose from your table and join table.")
+        st.text("The operator is the selection of operators you can choose from for your condition.")
+        st.text("The second operand is an open input literal that can have anything inputted, so its careful that you make sure your condition is correct and relevant to the attribute you're referencing.")
+        st.text("•  For gender, you must put \' around the gender initial in order for it to be valid. EX: gender = 'M'")
+    with data_altering:
+        st.text("Data can be altered by inserting, updating or deleting")
+        st.subheader("Insertion/Updation")
+        st.text("When inserting a new records, every data field must be filled to ensure that the data remains consistent across the dataset.")
+        st.text("When updating a record, it will update every field in every table related to that id.")
+        st.text("While this system is rather rigid, it ensures that all the data is correct and consistent no matter what. If you don't plan on using a certain part of data, you can leave it at its default value.")
+        st.subheader("Deletion")
+        st.text("Deleting records is simple. All you need to do is insert the student_id into the table and click delete record.")
+        st.text("When deleting a record, it will delete that record from all the tables with the same student_id, ensuring data concurrency across the tables.")
+    with data_analysis:
+        st.text("The data analysis tool is extremely useful for aggregating and visualzing data and data relationships.")
+        st.text("The aggregation methods are:")
+        st.text("•  Max")
+        st.text("•  Min")
+        st.text("•  Avg")
+        st.text("•  Sum")
+        st.text("•  Count")
+        st.text("Currently the grapher only graphs bar graphs, but we plan on expanding to support more graph types in the future.")
 
 with tab_data_management:
     # Data Management Windows
@@ -180,23 +213,30 @@ with tab_data_management:
             for i in range(num_conditions):
                 not_condition, operand1, operator, operand2 = st.columns(4)
                 with not_condition: not_condition_checkbox = st.checkbox("Not", key=f"not_{i}")
-                with operand1: operand1_input = st.text_input("Operand 1", key=f"operand1_{i}")
-                with operator: operator_input = st.selectbox("Operator", [" ", ">", ">=", "=", "<=", "<", "IN"], key=f"operator_{i}")
-                with operand2: operand2_input = st.text_input("Operand 2", key=f"operand2_{i}")
+                with operand1: 
+                    operand1_input = st.selectbox(label="Operand 1", options=st.session_state.global_df.columns, key=f"operand1_{i}")
+                with operator: operator_input = st.selectbox("Operator", ["", ">", ">=", "=", "<=", "<"], key=f"operator_{i}")
+                with operand2: 
+                    if operand1_input == "gender": operand2_input = st.selectbox(label="Operand2", options=["\'M\'", "\'F\'", "\'N\'", "\'O\'"], key=f"operand2_{i}")
+                    else: operand2_input = st.text_input("Operand 2", key=f"operand2_{i}")
             if active_table == join_table or join_table == "None":
                 query = f"SELECT * FROM {active_table}"
             else: 
                 query = f"SELECT * FROM {active_table} JOIN {join_table} ON {active_table}.student_id = {join_table}.student_id"
             conditions = []
             for i in range(num_conditions):
-                cond = condition(st.session_state.get(f"operand1_{i}"), st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
+                if st.session_state.get(f"operand1_{i}") != "student_id": cond = condition(st.session_state.get(f"operand1_{i}"), st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
+                else: cond = condition(f"{active_table}.student_id", st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
                 if cond.operand1 == "" or cond.operand2 == "" or cond.operator == "": continue
                 conditions.append(f"{cond.not_condition} {cond.operand1} {cond.operator} {cond.operand2} ")
             if conditions: query += " WHERE " + "AND ".join(conditions) 
-            df = pd.read_sql(query+";", st.session_state.db_conn)
-            df = df.loc[:, ~df.columns.duplicated()]
-            st.dataframe(df)
-            st.session_state.global_df = df
+            try:
+                df = pd.read_sql(query+";", st.session_state.db_conn)
+                df = df.loc[:, ~df.columns.duplicated()]
+                st.dataframe(df)
+                st.session_state.global_df = df
+            except:
+                st.error("There is an error in your condition")
     with data_manipulation:
         if uploaded is not None:
             data_updation, data_deletions = st.tabs(["Updation/Insertion", "Deletion"])
@@ -294,20 +334,53 @@ with tab_data_management:
                         st.success("Data record deleted successfully")
         else:
             st.write("Please upload a file")
+def argument_builder(dataframe, x_axis, y_axis, aggregate):
+    if y_axis == "None":
+        match aggregate:
+            case "Max": return dataframe[x_axis].max()
+            case "Min": return dataframe[x_axis].min()
+            case "Avg": return dataframe[x_axis].mean()
+            case "Sum": return dataframe[x_axis].sum()
+            case "Count": return dataframe[x_axis].count()
+            case "None": return dataframe
+    match aggregate:
+        case "Max": return dataframe.groupby(x_axis)[y_axis].max().reset_index()
+        case "Min": return dataframe.groupby(x_axis)[y_axis].min().reset_index()
+        case "Avg": return dataframe.groupby(x_axis)[y_axis].mean().reset_index()
+        case "Sum": return dataframe.groupby(x_axis)[y_axis].sum().reset_index()
+        case "Count": return dataframe.groupby(x_axis)[y_axis].count().reset_index()
+        case "None": return dataframe
 with tab_data_analysis:
-    df = st.session_state.global_df
-    opts = []
-    for column in df.columns:
-        opts.append(column)
-    opts.append("count")
-    x_axis = st.selectbox(label="X-Axis", options=opts)
-    y_axis = st.selectbox(label="Y-Axis", options=opts)
-    y_test = df[y_axis].value_counts()
-    plot = st.selectbox(label="Graph type", options=["Scatter Plot", "Bar Graph"])
-    if st.button("Graph"):
-        if plot == "Scatter Plot":
-            st.scatter_chart(data=df, x=x_axis, x_label=x_axis, y=y_axis, y_label=y_axis)
-        elif plot == "Bar Graph":
-            st.bar_chart(data=df, x=x_axis, x_label=x_axis, y=y_axis, y_label=y_axis)
-    # counts = df["gender"].value_counts()
-    # st.bar_chart(counts)
+    if st.session_state.db_valid:
+        df = st.session_state.global_df
+        opts = []
+        for column in df.columns:
+            opts.append(column)
+        opts.append("count")
+        x_axis = st.selectbox(label="X-Axis", options=opts)
+        y_axis = st.selectbox(label="Y-Axis", options=["None"] + opts)
+        st.write("^^^Leave as none if you're just aggregating a single attribute^^^")
+        aggregate_function = st.selectbox(label="Aggregate Function", options=["None", "Max", "Min", "Avg", "Sum", "Count"])
+        if y_axis == x_axis:
+            st.error("Please choose two differant axes")
+        elif y_axis == "None":
+            aggregate = argument_builder(df, x_axis, y_axis, aggregate_function)
+            match aggregate_function:
+                    case "Max": st.write(f"Maximum: {aggregate}")
+                    case "Min": st.write(f"Minimum: {aggregate}")
+                    case "Avg": st.write(f"Global Average: {aggregate}")
+                    case "Sum": st.write(f"Global Sum: {aggregate}")
+                    case "Count": st.write(f"Global Count: {aggregate}")
+        else:
+            if st.button("Graph"):
+                df_grouped = argument_builder(df, x_axis, y_axis, aggregate_function)
+                st.dataframe(df_grouped)
+                match aggregate_function:
+                    case "Max": st.write(f"Global Maximum: {df[y_axis].max()}")
+                    case "Min": st.write(f"Global Minimum: {df[y_axis].min()}")
+                    case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
+                    case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
+                    case "Count": st.write(f"Global Count: {df[y_axis].count()}")
+                st.bar_chart(data=df_grouped, x=x_axis, x_label=x_axis, y=y_axis, y_label=y_axis)
+    else:
+        st.write("Please input a file in the data management tab")
