@@ -187,6 +187,7 @@ with tab_data_management:
                 st.session_state.db_valid = True
                 st.session_state.db_conn.close()
                 st.session_state.db_conn = sqlite3.connect(st.session_state.db_path, check_same_thread=False)
+                st.session_state.global_df = pd.read_sql("SELECT * FROM Students;", st.session_state.db_conn)
                 tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table';", st.session_state.db_conn)
                 st.session_state.table_names = tables['name'].tolist()
                 st.session_state.table_names.pop(0) # Removes sqlite_sequence from the list
