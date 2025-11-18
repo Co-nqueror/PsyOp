@@ -316,7 +316,7 @@ with tab_data_management:
                     except: st.error("There is an error in the insertion data. Please double check your inputs")
                     
             with data_deletions:
-                targeted_id = st.number_input("Student ID", step=1, min=0)
+                targeted_id = st.number_input("Student ID", step=1, min_value=0)
                 if st.button("Delete Data Record"):
                     df_target = pd.read_sql(f"SELECT * FROM Students WHERE student_id={targeted_id};", st.session_state.db_conn)
                     if df_target.empty:
