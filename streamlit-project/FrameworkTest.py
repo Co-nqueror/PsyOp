@@ -4,7 +4,6 @@ import sqlite3
 import tempfile
 import time
 import shutil
-import matplotlib.pyplot as plt
 
 # Main Window Switching
 tutorial, tab_data_management, tab_data_analysis = st.tabs(["Tutorial","Data Management", "Data Analysis"])
