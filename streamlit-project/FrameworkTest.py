@@ -4,6 +4,12 @@ import sqlite3
 import tempfile
 import time
 import shutil
+import matplotlib.pyplot as plt
+from io import BytesIO
+
+# Initialize graph storage
+if "saved_graphs" not in st.session_state:
+    st.session_state.saved_graphs = []
 
 # Main Window Switching
 tutorial, tab_data_management, tab_data_analysis = st.tabs(["Tutorial","Data Management", "Data Analysis"])
@@ -39,6 +45,8 @@ if "global_df" not in st.session_state:
     st.session_state.global_df = ""
 if "global_table" not in st.session_state:
     st.session_state.global_table = ""
+
+# ----------------- TUTORIAL TAB ----------------------
 with tutorial:
     st.header("Welcome to PsyOp!")
     st.text("This is an application used to study and analyze mental health data collected from college student. This page will teach you how to use our application to your full advantage.")
@@ -137,8 +145,8 @@ with tutorial:
         st.text("•  Count")
         st.text("Currently the grapher only graphs bar graphs, but we plan on expanding to support more graph types in the future.")
 
+# ----------------- DATA MANAGEMENT TAB ----------------------
 with tab_data_management:
-    # Data Management Windows
     data_view, data_manipulation = st.tabs(["Data View", "Data Alteration"])
     with data_view:
         uploaded = st.file_uploader("Upload your SQLite DB", type=["db", "sqlite", "sqlite3"], key=st.session_state.uploader_key)
@@ -190,7 +198,7 @@ with tab_data_management:
                 st.session_state.global_df = pd.read_sql("SELECT * FROM Students;", st.session_state.db_conn)
                 tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table';", st.session_state.db_conn)
                 st.session_state.table_names = tables['name'].tolist()
-                st.session_state.table_names.pop(0) # Removes sqlite_sequence from the list
+                st.session_state.table_names.pop(0) 
                 st.session_state.file_uploaded = True
             else: 
                 st.error("There is an error in the file you uploaded")
@@ -198,18 +206,18 @@ with tab_data_management:
                 st.session_state.uploader_key += 1
                 st.rerun()
         if uploaded is not None:
-            # Table Selection
             table_dropdown_col, join_table_dropdown_col = st.columns(2)
             with table_dropdown_col:
                 active_table = st.selectbox("Table", st.session_state.table_names)
             with join_table_dropdown_col:
                 join_table = st.selectbox("Join Table", ["None"] + st.session_state.table_names)
-            # Condition Handling
+
             num_conditions_col, filter_button_col = st.columns(2)
             with num_conditions_col:
                 num_conditions = st.slider("Conditions", 0, 10, 1)
             with filter_button_col:
                 if st.button("Filter/Update"): print("Filtered")
+            
             for i in range(num_conditions):
                 not_condition, operand1, operator, operand2 = st.columns(4)
                 with not_condition: not_condition_checkbox = st.checkbox("Not", key=f"not_{i}")
@@ -219,17 +227,23 @@ with tab_data_management:
                 with operand2: 
                     if operand1_input == "gender": operand2_input = st.selectbox(label="Operand2", options=["\'M\'", "\'F\'", "\'N\'", "\'O\'"], key=f"operand2_{i}")
                     else: operand2_input = st.text_input("Operand 2", key=f"operand2_{i}")
+
             if active_table == join_table or join_table == "None":
                 query = f"SELECT * FROM {active_table}"
             else: 
                 query = f"SELECT * FROM {active_table} JOIN {join_table} ON {active_table}.student_id = {join_table}.student_id"
+
             conditions = []
             for i in range(num_conditions):
-                if st.session_state.get(f"operand1_{i}") != "student_id": cond = condition(st.session_state.get(f"operand1_{i}"), st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
-                else: cond = condition(f"{active_table}.student_id", st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
+                if st.session_state.get(f"operand1_{i}") != "student_id":
+                    cond = condition(st.session_state.get(f"operand1_{i}"), st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
+                else:
+                    cond = condition(f"{active_table}.student_id", st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
                 if cond.operand1 == "" or cond.operand2 == "" or cond.operator == "": continue
                 conditions.append(f"{cond.not_condition} {cond.operand1} {cond.operator} {cond.operand2} ")
+
             if conditions: query += " WHERE " + "AND ".join(conditions) 
+
             try:
                 df = pd.read_sql(query+";", st.session_state.db_conn)
                 df = df.loc[:, ~df.columns.duplicated()]
@@ -272,6 +286,7 @@ with tab_data_management:
                 sleep_quality, headache = st.columns(2)
                 with sleep_quality: sleep_quality_input = st.number_input("Sleep Quality", min_value=0, max_value=5)
                 with headache: headache_input = st.number_input("Headache", min_value=0, max_value=5)
+
                 if st.button("Insert/Update"):
                     df_target = pd.read_sql(f"SELECT * FROM Students WHERE student_id = {student_id_input}", st.session_state.db_conn)
                     if df_target.empty: message = "Data Inserted Successfully :)"
@@ -313,7 +328,8 @@ with tab_data_management:
                         st.session_state.db_conn.execute(physiological_query)
                         st.session_state.db_conn.commit()
                         st.success(message)
-                    except: st.error("There is an error in the insertion data. Please double check your inputs")
+                    except:
+                        st.error("There is an error in the insertion data. Please double check your inputs")
                     
             with data_deletions:
                 targeted_id = st.number_input("Student ID", step=1, min_value=0)
@@ -334,6 +350,8 @@ with tab_data_management:
                         st.success("Data record deleted successfully")
         else:
             st.write("Please upload a file")
+
+# ----------------- AGGREGATE FUNCTION ----------------------
 def argument_builder(dataframe, x_axis, y_axis, aggregate):
     if y_axis == "None":
         match aggregate:
@@ -350,37 +368,105 @@ def argument_builder(dataframe, x_axis, y_axis, aggregate):
         case "Sum": return dataframe.groupby(x_axis)[y_axis].sum().reset_index()
         case "Count": return dataframe.groupby(x_axis)[y_axis].count().reset_index()
         case "None": return dataframe
+
+# ----------------- DATA ANALYSIS TAB ----------------------
 with tab_data_analysis:
-    if st.session_state.db_valid:
-        df = st.session_state.global_df
-        opts = []
-        for column in df.columns:
-            opts.append(column)
-        opts.append("count")
-        x_axis = st.selectbox(label="X-Axis", options=opts)
-        y_axis = st.selectbox(label="Y-Axis", options=["None"] + opts)
-        st.write("^^^Leave as none if you're just aggregating a single attribute^^^")
-        aggregate_function = st.selectbox(label="Aggregate Function", options=["None", "Max", "Min", "Avg", "Sum", "Count"])
-        if y_axis == x_axis:
-            st.error("Please choose two differant axes")
-        elif y_axis == "None":
-            aggregate = argument_builder(df, x_axis, y_axis, aggregate_function)
-            match aggregate_function:
+    analysis_tab, saved_tab = st.tabs(["Analyze Data", "Saved Graphs"])
+
+    with analysis_tab:
+        if st.session_state.db_valid:
+            df = st.session_state.global_df
+            
+            # FIX: Removed + ["count"] to prevent KeyError. 
+            # To count items, select 'student_id' as Y-Axis and 'Count' as the function.
+            opts = list(df.columns) 
+
+            x_axis = st.selectbox(label="X-Axis", options=opts)
+            y_axis = st.selectbox(label="Y-Axis", options=["None"] + opts)
+            
+            st.write("^^^Leave Y-Axis as 'None' if you just want to count the X-Axis items^^^")
+            
+            aggregate_function = st.selectbox(label="Aggregate Function", options=["None", "Max", "Min", "Avg", "Sum", "Count"])
+
+            if y_axis == x_axis:
+                st.error("Please choose two different axes")
+
+            elif y_axis == "None":
+                # Handle case where no Y-axis is chosen (usually for counting X frequencies)
+                aggregate = argument_builder(df, x_axis, y_axis, aggregate_function)
+                match aggregate_function:
                     case "Max": st.write(f"Maximum: {aggregate}")
                     case "Min": st.write(f"Minimum: {aggregate}")
                     case "Avg": st.write(f"Global Average: {aggregate}")
                     case "Sum": st.write(f"Global Sum: {aggregate}")
                     case "Count": st.write(f"Global Count: {aggregate}")
+
+            else:
+                # --- GRAPH BUTTON ---
+                if st.button("Graph"):
+                    # Store graph data in session state
+                    st.session_state.graph_data = argument_builder(df, x_axis, y_axis, aggregate_function)
+                    st.session_state.graph_x = x_axis
+                    st.session_state.graph_y = y_axis
+                    st.session_state.graph_agg = aggregate_function
+                    st.session_state.graph_ready = True
+
+                # --- SHOW GRAPH ---
+                if st.session_state.get("graph_ready", False):
+                    df_grouped = st.session_state.graph_data
+                    st.dataframe(df_grouped)
+
+                    # Display Global Stats for the selected Y-Axis column
+                    # Use try/except to handle non-numeric columns safely
+                    try:
+                        match st.session_state.graph_agg:
+                            case "Max": st.write(f"Global Maximum: {df[y_axis].max()}")
+                            case "Min": st.write(f"Global Minimum: {df[y_axis].min()}")
+                            case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
+                            case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
+                            case "Count": st.write(f"Global Count: {df[y_axis].count()}")
+                    except TypeError:
+                        st.warning(f"Could not calculate {st.session_state.graph_agg} for {y_axis} (likely text data).")
+
+                    st.bar_chart(
+                        data=df_grouped,
+                        x=st.session_state.graph_x,
+                        x_label=st.session_state.graph_x,
+                        y=st.session_state.graph_y,
+                        y_label=st.session_state.graph_y
+                    )
+
+                    # --- SAVE BUTTON ---
+                    if st.button("Save This Graph"):
+                        fig, ax = plt.subplots()
+                        ax.bar(df_grouped[st.session_state.graph_x], df_grouped[st.session_state.graph_y])
+                        ax.set_xlabel(st.session_state.graph_x)
+                        ax.set_ylabel(st.session_state.graph_y)
+                        ax.set_title(f"{st.session_state.graph_x} vs {st.session_state.graph_y}")
+                        
+                        img_bytes = BytesIO()
+                        fig.savefig(img_bytes, format="png")
+                        img_bytes.seek(0)
+                        plt.close(fig)
+
+                        st.session_state.saved_graphs.append({"title": f"{st.session_state.graph_x} vs {st.session_state.graph_y} ({st.session_state.graph_agg})", "image": img_bytes})
+                        st.success("Graph saved!")
+
         else:
-            if st.button("Graph"):
-                df_grouped = argument_builder(df, x_axis, y_axis, aggregate_function)
-                st.dataframe(df_grouped)
-                match aggregate_function:
-                    case "Max": st.write(f"Global Maximum: {df[y_axis].max()}")
-                    case "Min": st.write(f"Global Minimum: {df[y_axis].min()}")
-                    case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
-                    case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
-                    case "Count": st.write(f"Global Count: {df[y_axis].count()}")
-                st.bar_chart(data=df_grouped, x=x_axis, x_label=x_axis, y=y_axis, y_label=y_axis)
-    else:
-        st.write("Please input a file in the data management tab")
+            st.write("Please input a file in the data management tab")
+
+    # ----------- SAVED GRAPHS DISPLAY ---------------
+    with saved_tab:
+        if not st.session_state.saved_graphs:
+            st.info("No graphs saved yet.")
+        else:
+            for i, graph in enumerate(st.session_state.saved_graphs):
+                st.divider()
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.subheader(graph["title"])
+                    st.image(graph["image"])
+                with col2:
+                    if st.button("Delete", key=f"del_{i}"):
+                        st.session_state.saved_graphs.pop(i)
+                        st.rerun()
