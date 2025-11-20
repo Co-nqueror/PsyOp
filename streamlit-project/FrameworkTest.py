@@ -388,7 +388,7 @@ with tab_data_analysis:
             x_axis = st.selectbox(label="X-Axis", options=opts)
             y_axis = st.selectbox(label="Y-Axis", options=["None"] + opts)
             
-            st.caption("Tip: Leave Y-Axis as 'None' if you just want to count the frequency of X-Axis items.")
+            st.text("^^^^ Leave as none if you simply just want to aggregate a single attribute ^^^^")
             
             aggregate_function = st.selectbox(label="Aggregate Function", options=["None", "Max", "Min", "Avg", "Sum", "Count"])
 
