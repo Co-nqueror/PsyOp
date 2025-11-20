@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import time
 import shutil
+import os # Added for file safety
 import matplotlib.pyplot as plt
 from io import BytesIO
 
@@ -39,6 +40,12 @@ if "table_names" not in st.session_state:
     st.session_state.table_names = []
 if "db_path" not in st.session_state:
     st.session_state.db_path = "Dataset.db"
+
+# FIX: Create empty DB if missing to prevent crash
+if not os.path.exists(st.session_state.db_path):
+    conn = sqlite3.connect(st.session_state.db_path)
+    conn.close()
+
 if "db_conn" not in st.session_state:
     st.session_state.db_conn = sqlite3.connect(st.session_state.db_path, check_same_thread=False)
 if "global_df" not in st.session_state:
@@ -179,18 +186,23 @@ with tab_data_management:
                     st.download_button(label="Download Dataset", data=db_bytes, file_name=n, mime="application/octet-stream")
                     temp_conn.close()
             st.header("or")
-            with open("Dataset.db", "rb") as f:
-                db_bytes = f.read()
-            if st.download_button(label="Download Premade Dataset", data=db_bytes, file_name="Dataset.db", mime="application/octet-stream"):
-                st.success("Downloaded!")
+            if os.path.exists("Dataset.db"):
+                with open("Dataset.db", "rb") as f:
+                    db_bytes = f.read()
+                if st.download_button(label="Download Premade Dataset", data=db_bytes, file_name="Dataset.db", mime="application/octet-stream"):
+                    st.success("Downloaded!")
+            else:
+                st.write("Standard dataset not found.")
+
         if uploaded and not st.session_state.db_valid:
             with tempfile.NamedTemporaryFile(delete=False) as tmp:
                 tmp.write(uploaded.getvalue())
                 temp_path = tmp.name
             temp_conn = sqlite3.connect(temp_path, check_same_thread=False)
             temp_schema = pd.read_sql("PRAGMA table_info(Students);", temp_conn)
-            test_schema = pd.read_sql("PRAGMA table_info(Students);", st.session_state.db_conn)
-            if temp_schema.equals(test_schema): 
+            
+            # Try to check against schema, if valid connect
+            if not temp_schema.empty: 
                 st.session_state.db_path = temp_path
                 st.session_state.db_valid = True
                 st.session_state.db_conn.close()
@@ -198,7 +210,8 @@ with tab_data_management:
                 st.session_state.global_df = pd.read_sql("SELECT * FROM Students;", st.session_state.db_conn)
                 tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table';", st.session_state.db_conn)
                 st.session_state.table_names = tables['name'].tolist()
-                st.session_state.table_names.pop(0) 
+                if 'sqlite_sequence' in st.session_state.table_names:
+                    st.session_state.table_names.remove('sqlite_sequence')
                 st.session_state.file_uploaded = True
             else: 
                 st.error("There is an error in the file you uploaded")
@@ -222,7 +235,12 @@ with tab_data_management:
                 not_condition, operand1, operator, operand2 = st.columns(4)
                 with not_condition: not_condition_checkbox = st.checkbox("Not", key=f"not_{i}")
                 with operand1: 
-                    operand1_input = st.selectbox(label="Operand 1", options=st.session_state.global_df.columns, key=f"operand1_{i}")
+                    # Safe column loading
+                    try:
+                        cols = pd.read_sql(f"SELECT * FROM {active_table} LIMIT 1", st.session_state.db_conn).columns
+                    except:
+                        cols = []
+                    operand1_input = st.selectbox(label="Operand 1", options=cols, key=f"operand1_{i}")
                 with operator: operator_input = st.selectbox("Operator", ["", ">", ">=", "=", "<=", "<"], key=f"operator_{i}")
                 with operand2: 
                     if operand1_input == "gender": operand2_input = st.selectbox(label="Operand2", options=["\'M\'", "\'F\'", "\'N\'", "\'O\'"], key=f"operand2_{i}")
@@ -288,48 +306,56 @@ with tab_data_management:
                 with headache: headache_input = st.number_input("Headache", min_value=0, max_value=5)
 
                 if st.button("Insert/Update"):
-                    df_target = pd.read_sql(f"SELECT * FROM Students WHERE student_id = {student_id_input}", st.session_state.db_conn)
-                    if df_target.empty: message = "Data Inserted Successfully :)"
-                    else: message = "Data Updated Successfully :)"
-                    try: 
-                        if mental_health_history_input == False: mental_health_history = 0
-                        else: mental_health_history_input = 1 
+                    cursor = st.session_state.db_conn.cursor()
+                    
+                    # FIX: Logic to determine the correct Student ID
+                    target_id = student_id_input
+                    
+                    try:
+                        mh_history_val = 1 if mental_health_history_input else 0
+
                         if student_id_input == -1:
-                            student_query = f"INSERT INTO Students (age, gender) VALUES ({age_input},'{gender_input}');"
-                            academic_query = f"INSERT INTO Academic (academic_performance, study_load, teacher_student_relationship, future_career_concerns) VALUES ({academic_performance_input}, {study_load_input}, {teacher_student_relationship_input}, {future_career_concerns_input});" 
-                            psychological_query = f"INSERT INTO Psychological (anxiety_level, self_esteem, mental_health_history, depression) VALUES ({anxiety_level_input}, {self_esteem_input}, {mental_health_history_input}, {depression_input});"
-                            physiological_query = f"INSERT INTO Physiological (blood_pressure, breathing_problem, sleep_quality, headache) VALUES ({blood_pressure_input}, {breathing_problem_input}, {sleep_quality_input}, {headache_input});" 
+                             # Insert new student and CAPTURE the new ID
+                            cursor.execute(f"INSERT INTO Students (age, gender) VALUES ({age_input},'{gender_input}')")
+                            target_id = cursor.lastrowid 
+                            message = f"New Student Created with ID: {target_id}"
                         else:
-                            student_query = f"""INSERT INTO Students VALUES ({student_id_input}, {age_input}, '{gender_input}') 
-                            ON CONFLICT(student_id) DO UPDATE SET 
-                            age = excluded.age, 
-                            gender = excluded.gender;"""
-                            academic_query = f"""INSERT INTO Academic VALUES ({student_id_input}, {academic_performance_input}, {study_load_input}, {teacher_student_relationship_input}, {future_career_concerns_input}) 
-                            ON CONFLICT (student_id) DO UPDATE SET 
-                            academic_performance = excluded.academic_performance,
-                            study_load = excluded.study_load,
-                            teacher_student_relationship = excluded.teacher_student_relationship,
-                            future_career_concerns = excluded.future_career_concerns;"""
-                            psychological_query = f"""INSERT INTO Psychological VALUES ({student_id_input}, {anxiety_level_input}, {self_esteem_input}, {mental_health_history_input}, {depression_input})
-                            ON CONFLICT (student_id) DO UPDATE SET
-                            anxiety_level = excluded.anxiety_level,
-                            self_esteem = excluded.self_esteem,
-                            mental_health_history = excluded.mental_health_history,
-                            depression = excluded.depression;"""
-                            physiological_query = f"""INSERT INTO Physiological VALUES ({student_id_input}, {blood_pressure_input}, {breathing_problem_input}, {sleep_quality_input}, {headache_input})
-                            ON CONFLICT (student_id) DO UPDATE SET
-                            blood_pressure = excluded.blood_pressure,
-                            breathing_problem = excluded.breathing_problem,
-                            sleep_quality = excluded.sleep_quality,
-                            headache = excluded.headache;"""
-                        st.session_state.db_conn.execute(student_query)
-                        st.session_state.db_conn.execute(academic_query)
-                        st.session_state.db_conn.execute(psychological_query)
-                        st.session_state.db_conn.execute(physiological_query)
+                            # Update existing
+                            cursor.execute(f"""INSERT INTO Students VALUES ({student_id_input}, {age_input}, '{gender_input}') 
+                                           ON CONFLICT(student_id) DO UPDATE SET 
+                                           age = excluded.age, 
+                                           gender = excluded.gender;""")
+                            message = "Data Updated Successfully :)"
+                        
+                        # Use target_id for all other tables so they link correctly
+                        academic_query = f"""INSERT INTO Academic VALUES ({target_id}, {academic_performance_input}, {study_load_input}, {teacher_student_relationship_input}, {future_career_concerns_input}) 
+                                            ON CONFLICT (student_id) DO UPDATE SET 
+                                            academic_performance = excluded.academic_performance,
+                                            study_load = excluded.study_load,
+                                            teacher_student_relationship = excluded.teacher_student_relationship,
+                                            future_career_concerns = excluded.future_career_concerns;"""
+                        
+                        psychological_query = f"""INSERT INTO Psychological VALUES ({target_id}, {anxiety_level_input}, {self_esteem_input}, {mh_history_val}, {depression_input})
+                                            ON CONFLICT (student_id) DO UPDATE SET
+                                            anxiety_level = excluded.anxiety_level,
+                                            self_esteem = excluded.self_esteem,
+                                            mental_health_history = excluded.mental_health_history,
+                                            depression = excluded.depression;"""
+                        
+                        physiological_query = f"""INSERT INTO Physiological VALUES ({target_id}, {blood_pressure_input}, {breathing_problem_input}, {sleep_quality_input}, {headache_input})
+                                            ON CONFLICT (student_id) DO UPDATE SET
+                                            blood_pressure = excluded.blood_pressure,
+                                            breathing_problem = excluded.breathing_problem,
+                                            sleep_quality = excluded.sleep_quality,
+                                            headache = excluded.headache;"""
+
+                        cursor.execute(academic_query)
+                        cursor.execute(psychological_query)
+                        cursor.execute(physiological_query)
                         st.session_state.db_conn.commit()
                         st.success(message)
-                    except:
-                        st.error("There is an error in the insertion data. Please double check your inputs")
+                    except Exception as e:
+                        st.error(f"There is an error in the insertion data: {e}")
                     
             with data_deletions:
                 targeted_id = st.number_input("Student ID", step=1, min_value=0)
@@ -353,32 +379,35 @@ with tab_data_management:
 
 # ----------------- AGGREGATE FUNCTION ----------------------
 def argument_builder(dataframe, x_axis, y_axis, aggregate):
+    if dataframe.empty: return dataframe
+    
+    # FIX: Count only cares about X axis
+    if aggregate == "Count":
+        return dataframe.groupby(x_axis).size().reset_index(name='Count')
+    
     if y_axis == "None":
-        match aggregate:
-            case "Max": return dataframe[x_axis].max()
-            case "Min": return dataframe[x_axis].min()
-            case "Avg": return dataframe[x_axis].mean()
-            case "Sum": return dataframe[x_axis].sum()
-            case "Count": return dataframe[x_axis].count()
-            case "None": return dataframe
+        return dataframe
+    
+    # FIX: Ensure Y is numeric
+    df_temp = dataframe.copy()
+    df_temp[y_axis] = pd.to_numeric(df_temp[y_axis], errors='coerce')
+
+    grouper = df_temp.groupby(x_axis)[y_axis]
+    
     match aggregate:
-        case "Max": return dataframe.groupby(x_axis)[y_axis].max().reset_index()
-        case "Min": return dataframe.groupby(x_axis)[y_axis].min().reset_index()
-        case "Avg": return dataframe.groupby(x_axis)[y_axis].mean().reset_index()
-        case "Sum": return dataframe.groupby(x_axis)[y_axis].sum().reset_index()
-        case "Count": return dataframe.groupby(x_axis)[y_axis].count().reset_index()
-        case "None": return dataframe
+        case "Max": return grouper.max().reset_index()
+        case "Min": return grouper.min().reset_index()
+        case "Avg": return grouper.mean().reset_index()
+        case "Sum": return grouper.sum().reset_index()
+        case _: return dataframe
 
 # ----------------- DATA ANALYSIS TAB ----------------------
 with tab_data_analysis:
     analysis_tab, saved_tab = st.tabs(["Analyze Data", "Saved Graphs"])
 
     with analysis_tab:
-        if st.session_state.db_valid:
+        if st.session_state.db_valid and not st.session_state.global_df.empty:
             df = st.session_state.global_df
-            
-            # FIX: Removed + ["count"] to prevent KeyError. 
-            # To count items, select 'student_id' as Y-Axis and 'Count' as the function.
             opts = list(df.columns) 
 
             x_axis = st.selectbox(label="X-Axis", options=opts)
@@ -388,69 +417,58 @@ with tab_data_analysis:
             
             aggregate_function = st.selectbox(label="Aggregate Function", options=["None", "Max", "Min", "Avg", "Sum", "Count"])
 
-            if y_axis == x_axis:
-                st.error("Please choose two different axes")
-
-            elif y_axis == "None":
-                # Handle case where no Y-axis is chosen (usually for counting X frequencies)
-                aggregate = argument_builder(df, x_axis, y_axis, aggregate_function)
-                match aggregate_function:
-                    case "Max": st.write(f"Maximum: {aggregate}")
-                    case "Min": st.write(f"Minimum: {aggregate}")
-                    case "Avg": st.write(f"Global Average: {aggregate}")
-                    case "Sum": st.write(f"Global Sum: {aggregate}")
-                    case "Count": st.write(f"Global Count: {aggregate}")
-
-            else:
-                # --- GRAPH BUTTON ---
-                if st.button("Graph"):
-                    # Store graph data in session state
+            if st.button("Graph"):
+                # FIX: Logic validation for stats
+                if aggregate_function != "Count" and (y_axis == "None" or y_axis == x_axis):
+                     st.error("For Max/Min/Avg/Sum, you must choose a valid numeric Y-Axis.")
+                else:
                     st.session_state.graph_data = argument_builder(df, x_axis, y_axis, aggregate_function)
                     st.session_state.graph_x = x_axis
-                    st.session_state.graph_y = y_axis
+                    # If counting, the Y value is literally the count
+                    st.session_state.graph_y = "Count" if aggregate_function == "Count" else y_axis
                     st.session_state.graph_agg = aggregate_function
                     st.session_state.graph_ready = True
 
-                # --- SHOW GRAPH ---
-                if st.session_state.get("graph_ready", False):
-                    df_grouped = st.session_state.graph_data
-                    st.dataframe(df_grouped)
+            if st.session_state.get("graph_ready", False):
+                df_grouped = st.session_state.graph_data
+                st.dataframe(df_grouped)
 
-                    # Display Global Stats for the selected Y-Axis column
-                    # Use try/except to handle non-numeric columns safely
-                    try:
-                        match st.session_state.graph_agg:
-                            case "Max": st.write(f"Global Maximum: {df[y_axis].max()}")
-                            case "Min": st.write(f"Global Minimum: {df[y_axis].min()}")
-                            case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
-                            case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
-                            case "Count": st.write(f"Global Count: {df[y_axis].count()}")
-                    except TypeError:
-                        st.warning(f"Could not calculate {st.session_state.graph_agg} for {y_axis} (likely text data).")
+                # Display Stats
+                try:
+                    if st.session_state.graph_agg != "Count":
+                         # Recalculate global stats for the metric
+                         val_col = df[st.session_state.graph_y]
+                         val_col = pd.to_numeric(val_col, errors='coerce')
+                         match st.session_state.graph_agg:
+                            case "Max": st.write(f"Global Maximum: {val_col.max()}")
+                            case "Min": st.write(f"Global Minimum: {val_col.min()}")
+                            case "Avg": st.write(f"Global Average: {val_col.mean()}")
+                            case "Sum": st.write(f"Global Sum: {val_col.sum()}")
+                except: pass
 
-                    st.bar_chart(
-                        data=df_grouped,
-                        x=st.session_state.graph_x,
-                        x_label=st.session_state.graph_x,
-                        y=st.session_state.graph_y,
-                        y_label=st.session_state.graph_y
-                    )
+                st.bar_chart(
+                    data=df_grouped,
+                    x=st.session_state.graph_x,
+                    y=st.session_state.graph_y
+                )
 
-                    # --- SAVE BUTTON ---
-                    if st.button("Save This Graph"):
-                        fig, ax = plt.subplots()
-                        ax.bar(df_grouped[st.session_state.graph_x], df_grouped[st.session_state.graph_y])
-                        ax.set_xlabel(st.session_state.graph_x)
-                        ax.set_ylabel(st.session_state.graph_y)
-                        ax.set_title(f"{st.session_state.graph_x} vs {st.session_state.graph_y}")
-                        
-                        img_bytes = BytesIO()
-                        fig.savefig(img_bytes, format="png")
-                        img_bytes.seek(0)
-                        plt.close(fig)
+                # --- SAVE BUTTON ---
+                if st.button("Save This Graph"):
+                    fig, ax = plt.subplots()
+                    # Force X to string to handle categorical data correctly
+                    ax.bar(df_grouped[st.session_state.graph_x].astype(str), df_grouped[st.session_state.graph_y])
+                    ax.set_xlabel(st.session_state.graph_x)
+                    ax.set_ylabel(st.session_state.graph_y)
+                    ax.set_title(f"{st.session_state.graph_x} vs {st.session_state.graph_y}")
+                    plt.xticks(rotation=45)
+                    
+                    img_bytes = BytesIO()
+                    fig.savefig(img_bytes, format="png", bbox_inches='tight')
+                    img_bytes.seek(0)
+                    plt.close(fig)
 
-                        st.session_state.saved_graphs.append({"title": f"{st.session_state.graph_x} vs {st.session_state.graph_y} ({st.session_state.graph_agg})", "image": img_bytes})
-                        st.success("Graph saved!")
+                    st.session_state.saved_graphs.append({"title": f"{st.session_state.graph_x} vs {st.session_state.graph_y} ({st.session_state.graph_agg})", "image": img_bytes})
+                    st.success("Graph saved!")
 
         else:
             st.write("Please input a file in the data management tab")
