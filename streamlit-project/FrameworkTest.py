@@ -353,21 +353,25 @@ with tab_data_management:
 
 # ----------------- AGGREGATE FUNCTION ----------------------
 def argument_builder(dataframe, x_axis, y_axis, aggregate):
-    if y_axis == "None":
+    # Use try-except to catch errors when performing math on text columns
+    try:
+        if y_axis == "None":
+            match aggregate:
+                case "Max": return dataframe[x_axis].max()
+                case "Min": return dataframe[x_axis].min()
+                case "Avg": return dataframe[x_axis].mean()
+                case "Sum": return dataframe[x_axis].sum()
+                case "Count": return dataframe[x_axis].count()
+                case "None": return dataframe
         match aggregate:
-            case "Max": return dataframe[x_axis].max()
-            case "Min": return dataframe[x_axis].min()
-            case "Avg": return dataframe[x_axis].mean()
-            case "Sum": return dataframe[x_axis].sum()
-            case "Count": return dataframe[x_axis].count()
+            case "Max": return dataframe.groupby(x_axis)[y_axis].max().reset_index()
+            case "Min": return dataframe.groupby(x_axis)[y_axis].min().reset_index()
+            case "Avg": return dataframe.groupby(x_axis)[y_axis].mean().reset_index()
+            case "Sum": return dataframe.groupby(x_axis)[y_axis].sum().reset_index()
+            case "Count": return dataframe.groupby(x_axis)[y_axis].count().reset_index()
             case "None": return dataframe
-    match aggregate:
-        case "Max": return dataframe.groupby(x_axis)[y_axis].max().reset_index()
-        case "Min": return dataframe.groupby(x_axis)[y_axis].min().reset_index()
-        case "Avg": return dataframe.groupby(x_axis)[y_axis].mean().reset_index()
-        case "Sum": return dataframe.groupby(x_axis)[y_axis].sum().reset_index()
-        case "Count": return dataframe.groupby(x_axis)[y_axis].count().reset_index()
-        case "None": return dataframe
+    except (TypeError, ValueError):
+        return None
 
 # ----------------- DATA ANALYSIS TAB ----------------------
 with tab_data_analysis:
@@ -394,21 +398,31 @@ with tab_data_analysis:
             elif y_axis == "None":
                 # Handle single column aggregation
                 aggregate = argument_builder(df, x_axis, y_axis, aggregate_function)
-                match aggregate_function:
-                    case "Max": st.write(f"Maximum: {aggregate}")
-                    case "Min": st.write(f"Minimum: {aggregate}")
-                    case "Avg": st.write(f"Global Average: {aggregate}")
-                    case "Sum": st.write(f"Global Sum: {aggregate}")
-                    case "Count": st.write(f"Global Count: {aggregate}")
+                
+                # Safely display result or error
+                if aggregate is None:
+                    st.error(f"Cannot calculate '{aggregate_function}' for '{x_axis}'. Ensure the data is numeric (not text).")
+                else:
+                    match aggregate_function:
+                        case "Max": st.write(f"Maximum: {aggregate}")
+                        case "Min": st.write(f"Minimum: {aggregate}")
+                        case "Avg": st.write(f"Global Average: {aggregate}")
+                        case "Sum": st.write(f"Global Sum: {aggregate}")
+                        case "Count": st.write(f"Global Count: {aggregate}")
 
             else:
                 # --- GRAPH BUTTON ---
                 if st.button("Graph"):
-                    st.session_state.graph_data = argument_builder(df, x_axis, y_axis, aggregate_function)
-                    st.session_state.graph_x = x_axis
-                    st.session_state.graph_y = y_axis
-                    st.session_state.graph_agg = aggregate_function
-                    st.session_state.graph_ready = True
+                    data = argument_builder(df, x_axis, y_axis, aggregate_function)
+                    
+                    if data is None:
+                        st.error(f"Cannot calculate '{aggregate_function}' for '{y_axis}'. Ensure the data is numeric (not text).")
+                    else:
+                        st.session_state.graph_data = data
+                        st.session_state.graph_x = x_axis
+                        st.session_state.graph_y = y_axis
+                        st.session_state.graph_agg = aggregate_function
+                        st.session_state.graph_ready = True
 
                 # --- SHOW GRAPH ---
                 if st.session_state.get("graph_ready", False):
@@ -423,7 +437,7 @@ with tab_data_analysis:
                             case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
                             case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
                             case "Count": st.write(f"Global Count: {df[y_axis].count()}")
-                    except TypeError:
+                    except (TypeError, ValueError):
                         st.warning(f"Could not calculate {st.session_state.graph_agg} for {y_axis} (likely text data).")
 
                     st.bar_chart(
