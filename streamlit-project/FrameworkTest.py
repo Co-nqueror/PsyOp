@@ -411,18 +411,17 @@ with tab_data_analysis:
                         case "Count": st.write(f"Global Count: {aggregate}")
 
             else:
-                # --- GRAPH BUTTON ---
-                if st.button("Graph"):
-                    data = argument_builder(df, x_axis, y_axis, aggregate_function)
-                    
-                    if data is None:
-                        st.error(f"Cannot calculate '{aggregate_function}' for '{y_axis}'. Ensure the data is numeric (not text).")
-                    else:
-                        st.session_state.graph_data = data
-                        st.session_state.graph_x = x_axis
-                        st.session_state.graph_y = y_axis
-                        st.session_state.graph_agg = aggregate_function
-                        st.session_state.graph_ready = True
+            # --- GRAPH BUTTON ---
+                data = argument_builder(df, x_axis, y_axis, aggregate_function)
+                
+                if data is None:
+                    st.error(f"Cannot calculate '{aggregate_function}' for '{y_axis}'. Ensure the data is numeric (not text).")
+                else:
+                    st.session_state.graph_data = data
+                    st.session_state.graph_x = x_axis
+                    st.session_state.graph_y = y_axis
+                    st.session_state.graph_agg = aggregate_function
+                    st.session_state.graph_ready = True
 
                 # --- SHOW GRAPH ---
                 if st.session_state.get("graph_ready", False):
