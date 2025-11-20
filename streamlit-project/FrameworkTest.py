@@ -483,6 +483,17 @@ with tab_data_analysis:
                     st.subheader(graph["title"])
                     st.image(graph["image"])
                 with col2:
+                    # Create a safe filename based on title
+                    safe_title = "".join([c for c in graph["title"] if c.isalnum() or c in (' ','-','_')]).strip()
+                    
+                    st.download_button(
+                        label="Download PNG",
+                        data=graph["image"].getvalue(),
+                        file_name=f"{safe_title}.png",
+                        mime="image/png",
+                        key=f"dnld_{i}"
+                    )
+                    
                     if st.button("Delete", key=f"del_{i}"):
                         st.session_state.saved_graphs.pop(i)
                         st.rerun()
