@@ -424,29 +424,28 @@ with tab_data_analysis:
                         st.session_state.graph_agg = aggregate_function
                         st.session_state.graph_ready = True
 
-                # --- SHOW GRAPH ---
-                if st.session_state.get("graph_ready", False):
-                    df_grouped = st.session_state.graph_data
-                    st.dataframe(df_grouped)
+                    # --- SHOW GRAPH ---
+                    if st.session_state.get("graph_ready", False):
+                        df_grouped = st.session_state.graph_data
+                        st.dataframe(df_grouped)
 
-                    # Display Global Stats safely
-                    try:
-                        match st.session_state.graph_agg:
-                            case "Max": st.write(f"Global Maximum: {df[y_axis].max()}")
-                            case "Min": st.write(f"Global Minimum: {df[y_axis].min()}")
-                            case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
-                            case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
-                            case "Count": st.write(f"Global Count: {df[y_axis].count()}")
-                    except (TypeError, ValueError):
-                        st.warning(f"Could not calculate {st.session_state.graph_agg} for {y_axis} (likely text data).")
-
-                    st.bar_chart(
-                        data=df_grouped,
-                        x=st.session_state.graph_x,
-                        x_label=st.session_state.graph_x,
-                        y=st.session_state.graph_y,
-                        y_label=st.session_state.graph_y
-                    )
+                        # Display Global Stats safely
+                        try:
+                            match st.session_state.graph_agg:
+                                case "Max": st.write(f"Global Maximum: {df[y_axis].max()}")
+                                case "Min": st.write(f"Global Minimum: {df[y_axis].min()}")
+                                case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
+                                case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
+                                case "Count": st.write(f"Global Count: {df[y_axis].count()}")
+                        except (TypeError, ValueError):
+                            st.warning(f"Could not calculate {st.session_state.graph_agg} for {y_axis} (likely text data).")
+                        st.bar_chart(
+                            data=df_grouped,
+                            x=st.session_state.graph_x,
+                            x_label=st.session_state.graph_x,
+                            y=st.session_state.graph_y,
+                            y_label=st.session_state.graph_y
+                        )
 
                     # --- SAVE BUTTON ---
                     if st.button("Save This Graph"):
