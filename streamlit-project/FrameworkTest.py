@@ -4,7 +4,6 @@ import sqlite3
 import tempfile
 import time
 import shutil
-import os 
 import matplotlib.pyplot as plt
 from io import BytesIO
 
@@ -13,7 +12,7 @@ if "saved_graphs" not in st.session_state:
     st.session_state.saved_graphs = []
 
 # Main Window Switching
-tutorial, tab_data_management, tab_data_analysis = st.tabs(["Tutorial","Data Management", "Data Analysis"])
+tutorial, tab_data_management, tab_data_analysis = st.tabs(["Tutorial", "Data Management", "Data Analysis"])
 
 # Condition Logic Wrapper
 class condition:
@@ -40,12 +39,6 @@ if "table_names" not in st.session_state:
     st.session_state.table_names = []
 if "db_path" not in st.session_state:
     st.session_state.db_path = "Dataset.db"
-
-# FIX: Create empty DB if missing to prevent crash
-if not os.path.exists(st.session_state.db_path):
-    conn = sqlite3.connect(st.session_state.db_path)
-    conn.close()
-
 if "db_conn" not in st.session_state:
     st.session_state.db_conn = sqlite3.connect(st.session_state.db_path, check_same_thread=False)
 if "global_df" not in st.session_state:
@@ -56,320 +49,426 @@ if "global_table" not in st.session_state:
 # ----------------- TUTORIAL TAB ----------------------
 with tutorial:
     st.header("Welcome to PsyOp!")
-    st.text("This is an application used to study and analyze mental health data collected from college student.")
+    st.text("This is an application used to study and analyze mental health data collected from college student. This page will teach you how to use our application to your full advantage.")
     data_schema, data_filtering, data_altering, data_analysis = st.tabs(["Data Schema", "Data Filtering", "Data Altering", "Data Analysis"])
     with data_schema:
         st.text("This section will teach you about how have our data organized and what it means.")
+        st.text("Our data is organized into four tables:")
         st.text("""
-            Students: student_id, age, gender
-            Academic: academic_performance, study_load, teacher_student_relationship, future_career_concerns (0-5)
-            Psychological: anxiety_level (GAD-7), self_esteem, mental_health_history, depression (PHQ-9)
-            Physiological: blood_pressure, breathing_problem, sleep_quality, headache (0-5)
+            Students
+                    •   student_id
+                    •    age
+                    •   gender
+            Academic
+                    •   student_id
+                    •   academic_performance 
+                    •   study_load
+                    •   teacher_student_relationship
+                    •   future_career_concerns
+            Psychological
+                    •   student_id
+                    •   anxiety_level
+                    •   self_esteem
+                    •   mental_health_history
+                    •   depression
+            Physiological
+                    •   student_id
+                    •   blood_pressure
+                    •   breathing_problem
+                    •   sleep_quality
+                    •   headache
         """)
+        st.text("We'll break down further what each data piece means table by table")
+        st.subheader("Students")
+        st.text("•  The student_id is arbitrary and does not have any meaning, it is just the primary key that connects the data and keeps track of it.")
+        st.text("•  age is in years. The default dataset we provide only includes ages 18-22.")
+        st.text("""• gender has four options for the sake of simplicity:
+            • 'M' for Male
+            • 'F' for Female
+            • 'N' for Non-Binary
+            • 'O' for Other""")
+        st.subheader("Academic")
+        st.text("Academic is graded on a 0-5 scale where 0 is \"Not at all\" and 5 is \"Extremely\"")
+        st.text("•  student_id")
+        st.text("•  academic_performance: Do you lack confidence in your academic performance?")
+        st.text("•  study_load: Do you feel overwhelmed with your academic workload?")
+        st.text("•  teacher_student_relationship: Are you facing any difficulties with your professors or instructors?")
+        st.text("•  future_career_concerns: Do you lack confidence in your choice of academic subjects?")
+        st.subheader("Psychological")
+        st.text("Psychological is measured using various official medical assesment tools which range in scale.")
+        st.text("•  student_id")
+        st.text("•  anxiety_level: Measured using GAD-7 (Generalized Anxiety Disorder-7) scale.")
+        st.text("•  self_esteem: Assessed via Rosenberg Self-Esteem scale.")
+        st.text("•  mental_health_history: Either 1 or 0, 1 meaning yes and 0 meaning no.")
+        st.text("•  depression: Assesed via PHQ-9 (Patient Health Questionnaire-9).")
+        st.subheader("Physiological")
+        st.text("Physiological is graded on a 0-5 scale where 0 is \"Not at all\" and 5 is \"Extremely\"")
+        st.text("•  student_id")
+        st.text("•  blood_pressure: \"Have you noticed a rapid heartbeat or palpitations?\"")
+        st.text("•  breathing_problem: \"Do you face any problems or difficulties breathing?\"")
+        st.text("•  sleep_quality: \"Do you face any sleep problems or difficulties falling asleep?\"")
+        st.text("•  headache: \"Have you been getting headaches more often than usual?\"")
+        st.subheader("Where our schema is from")
+        st.text("Our schema is based of an imputation of the national health survey of college students")
+        st.text("This imputation was collected by research students from Kaggle here: https://www.kaggle.com/datasets/mdsultanulislamovi/student-stress-monitoring-datasets/data")
+        st.text("Those students go deeper into their study of the data here which does a much better job of explaining the rationale behind the schema: https://arxiv.org/abs/2508.01105")
+        st.subheader("Uploading your dataset")
+        st.text("In order to upload data to the application, it must be of the exact same schema as the schema previously referenced down to the letter. If not, the app will reject it.")
+        st.text("We provide the option to make a blank dataset of the schema or a duplication of the dataset we worked with under Data Management>DataView.")
+        st.text("We know this is very rigid and limiting to larger more nuanced research and we are working to make it more flexible.")
     with data_filtering:
-        st.text("Use the sliders and inputs to filter your dataset based on specific conditions.")
+        st.subheader("Choosing your tables")
+        st.text("For the tables, you are allowed to pick one active table and one join table, joined on the student_id")
+        st.subheader("Making conditions")
+        st.text("You can use the conditions slider to add or remove the number of coniditons")
+        st.text("The not checkbox will just do the opposite of whatever condition you've wrote.")
+        st.text("The first operand is the different columns you can choose from your table and join table.")
+        st.text("The operator is the selection of operators you can choose from for your condition.")
+        st.text("The second operand is an open input literal that can have anything inputted, so its careful that you make sure your condition is correct and relevant to the attribute you're referencing.")
+        st.text("•  For gender, you must put \' around the gender initial in order for it to be valid. EX: gender = 'M'")
     with data_altering:
-        st.text("You can insert, update, or delete student records.")
+        st.text("Data can be altered by inserting, updating or deleting")
+        st.subheader("Insertion/Updation")
+        st.text("When inserting a new records, every data field must be filled to ensure that the data remains consistent across the dataset.")
+        st.text("When updating a record, it will update every field in every table related to that id.")
+        st.text("While this system is rather rigid, it ensures that all the data is correct and consistent no matter what. If you don't plan on using a certain part of data, you can leave it at its default value.")
+        st.subheader("Deletion")
+        st.text("Deleting records is simple. All you need to do is insert the student_id into the table and click delete record.")
+        st.text("When deleting a record, it will delete that record from all the tables with the same student_id, ensuring data concurrency across the tables.")
     with data_analysis:
-        st.text("Generate bar charts and aggregate statistics (Max, Min, Avg, etc.).")
+        st.text("The data analysis tool is extremely useful for aggregating and visualzing data and data relationships.")
+        st.text("The aggregation methods are:")
+        st.text("•  Max")
+        st.text("•  Min")
+        st.text("•  Avg")
+        st.text("•  Sum")
+        st.text("•  Count")
+        st.text("Currently the grapher only graphs bar graphs, but we plan on expanding to support more graph types in the future.")
 
 # ----------------- DATA MANAGEMENT TAB ----------------------
 with tab_data_management:
     data_view, data_manipulation = st.tabs(["Data View", "Data Alteration"])
     with data_view:
         uploaded = st.file_uploader("Upload your SQLite DB", type=["db", "sqlite", "sqlite3"], key=st.session_state.uploader_key)
-        
-        # Logic for downloading/creating DB
         if uploaded is None:
             st.session_state.db_valid = False
             st.header("or")
             st.write("Create a new blank dataset")
-            col_text, col_ext = st.columns(2)
-            with col_text: file_name = st.text_input(label="Filename")
-            with col_ext: st.write("\n\n.db")
-            
+            text, extension = st.columns(2)
+            with text:
+                file_name = st.text_input(label="")
+            with extension:
+                st.write("")
+                st.write("")
+                st.write("")
+                st.write(".db")
             if file_name:
-                n = file_name + ".db"
+                n = file_name +".db"
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
                     temp_path = tmp.name
                     shutil.copyfile("Dataset.db", temp_path)
                     temp_conn = sqlite3.connect(temp_path, check_same_thread=False)
-                    # Clear data
-                    for t in ["Students", "Academic", "Psychological", "Physiological", "sqlite_sequence"]:
-                        try: temp_conn.execute(f"DELETE FROM {t};")
-                        except: pass
+                    temp_conn.execute("DELETE FROM sqlite_sequence;")
+                    temp_conn.execute("DELETE FROM Academic;")
+                    temp_conn.execute("DELETE FROM Psychological;")
+                    temp_conn.execute("DELETE FROM Physiological;")
+                    temp_conn.execute("DELETE FROM Students;")
                     temp_conn.commit()
                     with open(temp_path, "rb") as f:
                         db_bytes = f.read()
-                    st.download_button(label="Download Empty Dataset", data=db_bytes, file_name=n, mime="application/octet-stream")
+                    st.download_button(label="Download Dataset", data=db_bytes, file_name=n, mime="application/octet-stream")
                     temp_conn.close()
-
             st.header("or")
-            if os.path.exists("Dataset.db"):
-                with open("Dataset.db", "rb") as f:
-                    db_bytes = f.read()
-                if st.download_button(label="Download Premade Dataset", data=db_bytes, file_name="Dataset.db", mime="application/octet-stream"):
-                    st.success("Downloaded!")
-            else:
-                st.write("Standard dataset not found.")
-
-        # Logic for processing uploaded file
+            with open("Dataset.db", "rb") as f:
+                db_bytes = f.read()
+            if st.download_button(label="Download Premade Dataset", data=db_bytes, file_name="Dataset.db", mime="application/octet-stream"):
+                st.success("Downloaded!")
         if uploaded and not st.session_state.db_valid:
             with tempfile.NamedTemporaryFile(delete=False) as tmp:
                 tmp.write(uploaded.getvalue())
                 temp_path = tmp.name
-            
-            try:
-                temp_conn = sqlite3.connect(temp_path, check_same_thread=False)
-                temp_schema = pd.read_sql("PRAGMA table_info(Students);", temp_conn)
-                if not temp_schema.empty: 
-                    st.session_state.db_path = temp_path
-                    st.session_state.db_valid = True
-                    st.session_state.db_conn.close()
-                    st.session_state.db_conn = sqlite3.connect(st.session_state.db_path, check_same_thread=False)
-                    st.session_state.global_df = pd.read_sql("SELECT * FROM Students;", st.session_state.db_conn)
-                    tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table';", st.session_state.db_conn)
-                    st.session_state.table_names = [x for x in tables['name'].tolist() if x != 'sqlite_sequence']
-                    st.session_state.file_uploaded = True
-                    st.rerun()
-                else:
-                    st.error("Invalid Schema")
-            except:
-                st.error("Error reading file")
-
+            temp_conn = sqlite3.connect(temp_path, check_same_thread=False)
+            temp_schema = pd.read_sql("PRAGMA table_info(Students);", temp_conn)
+            test_schema = pd.read_sql("PRAGMA table_info(Students);", st.session_state.db_conn)
+            if temp_schema.equals(test_schema): 
+                st.session_state.db_path = temp_path
+                st.session_state.db_valid = True
+                st.session_state.db_conn.close()
+                st.session_state.db_conn = sqlite3.connect(st.session_state.db_path, check_same_thread=False)
+                st.session_state.global_df = pd.read_sql("SELECT * FROM Students;", st.session_state.db_conn)
+                tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table';", st.session_state.db_conn)
+                st.session_state.table_names = tables['name'].tolist()
+                st.session_state.table_names.pop(0) 
+                st.session_state.file_uploaded = True
+            else: 
+                st.error("There is an error in the file you uploaded")
+                time.sleep(2)
+                st.session_state.uploader_key += 1
+                st.rerun()
         if uploaded is not None:
-            # Filter Logic
-            c1, c2 = st.columns(2)
-            with c1: active_table = st.selectbox("Table", st.session_state.table_names)
-            with c2: join_table = st.selectbox("Join Table", ["None"] + st.session_state.table_names)
+            table_dropdown_col, join_table_dropdown_col = st.columns(2)
+            with table_dropdown_col:
+                active_table = st.selectbox("Table", st.session_state.table_names)
+            with join_table_dropdown_col:
+                join_table = st.selectbox("Join Table", ["None"] + st.session_state.table_names)
 
-            num_conditions = st.slider("Conditions", 0, 10, 1)
+            num_conditions_col, filter_button_col = st.columns(2)
+            with num_conditions_col:
+                num_conditions = st.slider("Conditions", 0, 10, 1)
+            with filter_button_col:
+                if st.button("Filter/Update"): print("Filtered")
             
-            # Dynamic Conditions
-            conditions_list = []
             for i in range(num_conditions):
-                c_not, c_op1, c_oper, c_op2 = st.columns(4)
-                with c_not: is_not = st.checkbox("Not", key=f"not_{i}")
-                with c_op1: 
-                    try: cols = pd.read_sql(f"SELECT * FROM {active_table} LIMIT 1", st.session_state.db_conn).columns
-                    except: cols = []
-                    op1 = st.selectbox("Operand 1", cols, key=f"op1_{i}")
-                with c_oper: operator = st.selectbox("Operator", ["", ">", ">=", "=", "<=", "<"], key=f"oper_{i}")
-                with c_op2: 
-                    if op1 == "gender": op2 = st.selectbox("Operand 2", ["'M'", "'F'", "'N'", "'O'"], key=f"op2_{i}")
-                    else: op2 = st.text_input("Operand 2", key=f"op2_{i}")
-                
-                if op1 and operator and op2:
-                    prefix = f"{active_table}." if op1 == "student_id" else ""
-                    not_str = "NOT" if is_not else ""
-                    conditions_list.append(f"{not_str} {prefix}{op1} {operator} {op2}")
+                not_condition, operand1, operator, operand2 = st.columns(4)
+                with not_condition: not_condition_checkbox = st.checkbox("Not", key=f"not_{i}")
+                with operand1: 
+                    operand1_input = st.selectbox(label="Operand 1", options=st.session_state.global_df.columns, key=f"operand1_{i}")
+                with operator: operator_input = st.selectbox("Operator", ["", ">", ">=", "=", "<=", "<"], key=f"operator_{i}")
+                with operand2: 
+                    if operand1_input == "gender": operand2_input = st.selectbox(label="Operand2", options=["\'M\'", "\'F\'", "\'N\'", "\'O\'"], key=f"operand2_{i}")
+                    else: operand2_input = st.text_input("Operand 2", key=f"operand2_{i}")
 
-            # Query Build
-            query = f"SELECT * FROM {active_table}"
-            if join_table != "None" and join_table != active_table:
-                query += f" JOIN {join_table} ON {active_table}.student_id = {join_table}.student_id"
-            
-            if conditions_list:
-                query += " WHERE " + " AND ".join(conditions_list)
+            if active_table == join_table or join_table == "None":
+                query = f"SELECT * FROM {active_table}"
+            else: 
+                query = f"SELECT * FROM {active_table} JOIN {join_table} ON {active_table}.student_id = {join_table}.student_id"
 
-            if st.button("Filter/Update"):
-                try:
-                    df = pd.read_sql(query, st.session_state.db_conn)
-                    df = df.loc[:, ~df.columns.duplicated()]
-                    st.session_state.global_df = df
-                    st.dataframe(df)
-                except Exception as e:
-                    st.error(f"Query Error: {e}")
+            conditions = []
+            for i in range(num_conditions):
+                if st.session_state.get(f"operand1_{i}") != "student_id":
+                    cond = condition(st.session_state.get(f"operand1_{i}"), st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
+                else:
+                    cond = condition(f"{active_table}.student_id", st.session_state.get(f"operand2_{i}"), st.session_state.get(f"operator_{i}"), st.session_state.get(f"not_{i}"))
+                if cond.operand1 == "" or cond.operand2 == "" or cond.operator == "": continue
+                conditions.append(f"{cond.not_condition} {cond.operand1} {cond.operator} {cond.operand2} ")
 
+            if conditions: query += " WHERE " + "AND ".join(conditions) 
+
+            try:
+                df = pd.read_sql(query+";", st.session_state.db_conn)
+                df = df.loc[:, ~df.columns.duplicated()]
+                st.dataframe(df)
+                st.session_state.global_df = df
+            except:
+                st.error("There is an error in your condition")
     with data_manipulation:
         if uploaded is not None:
-            data_updation, data_deletions = st.tabs(["Insert/Update", "Delete"])
-            
+            data_updation, data_deletions = st.tabs(["Updation/Insertion", "Deletion"])
             with data_updation: 
-                st.caption("Use ID -1 to create a NEW student.")
-                sid = st.number_input("Student ID", -1, step=1)
-                
-                c1, c2 = st.columns(2)
-                age = c1.number_input("Age", 18, 100, 18)
-                gender = c2.selectbox("Gender", ["M", "F", "N", "O"])
-                
-                with st.expander("Academic"):
-                    c1, c2 = st.columns(2)
-                    ac_perf = c1.number_input("Performance", 0, 5)
-                    load = c2.number_input("Load", 0, 5)
-                    rel = c1.number_input("Teacher Rel", 0, 5)
-                    career = c2.number_input("Career Concerns", 0, 5)
-                
-                with st.expander("Psychological"):
-                    c1, c2 = st.columns(2)
-                    anx = c1.number_input("Anxiety", 0, 21)
-                    est = c2.number_input("Esteem", 0, 30)
-                    dep = c1.number_input("Depression", 0, 27)
-                    hist = c2.checkbox("History")
-                
-                with st.expander("Physiological"):
-                    c1, c2 = st.columns(2)
-                    bp = c1.number_input("BP", 0, 5)
-                    breath = c2.number_input("Breathing", 0, 5)
-                    sleep = c1.number_input("Sleep", 0, 5)
-                    head = c2.number_input("Headache", 0, 5)
+                # Students
+                st.write("Students")
+                student_id_input = st.number_input("Student ID", min_value=-1, max_value=10000000, step=1)
+                st.write("^^^^^ Leave as -1 if you are inserting new data ^^^^^")
+                age, gender = st.columns(2)
+                with age: age_input = st.number_input("Age", min_value=18, max_value=22, step=1)
+                with gender: gender_input = st.selectbox("Gender", ["M", "F", "N", "O"])
+                # Academic
+                st.write("Academic")
+                academic_performance, study_load = st.columns(2)
+                with academic_performance: academic_performance_input = st.number_input("Academic Performance", min_value=0, max_value=5)
+                with study_load: study_load_input = st.number_input("Study Load", min_value=0, max_value=5)
+                teacher_student_relationship, future_career_concerns = st.columns(2)
+                with teacher_student_relationship: teacher_student_relationship_input = st.number_input("Teacher-Student Relationship", min_value=0, max_value=5)
+                with future_career_concerns: future_career_concerns_input = st.number_input("Future Career Concerns", min_value=0, max_value=5)
+                # Psychological
+                st.write("Psychological")
+                anxiety_level, self_esteem = st.columns(2)
+                with anxiety_level: anxiety_level_input = st.number_input("Anxiety Level", min_value=0, max_value=21)
+                with self_esteem: self_esteem_input = st.number_input("Self Esteem", min_value=0, max_value=30)
+                mental_health_history, depression = st.columns(2)
+                with mental_health_history: mental_health_history_input = st.checkbox("Mental Health History")
+                with depression: depression_input = st.number_input("Depression", min_value=0, max_value=27)
+                # Physiological
+                st.write("Physiological")
+                blood_pressure, breathing_problem = st.columns(2)
+                with blood_pressure: blood_pressure_input = st.number_input("Blood Pressure", min_value=0, max_value=5)
+                with breathing_problem: breathing_problem_input = st.number_input("Breathing Problem", min_value=0, max_value=5)
+                sleep_quality, headache = st.columns(2)
+                with sleep_quality: sleep_quality_input = st.number_input("Sleep Quality", min_value=0, max_value=5)
+                with headache: headache_input = st.number_input("Headache", min_value=0, max_value=5)
 
-                if st.button("Submit Data"):
-                    cursor = st.session_state.db_conn.cursor()
-                    try:
-                        hist_val = 1 if hist else 0
-                        target_id = sid
-                        
-                        # Handle Student Creation/ID
-                        if sid == -1:
-                            cursor.execute(f"INSERT INTO Students (age, gender) VALUES ({age}, '{gender}')")
-                            target_id = cursor.lastrowid
-                            msg = f"Created Student ID: {target_id}"
+                if st.button("Insert/Update"):
+                    df_target = pd.read_sql(f"SELECT * FROM Students WHERE student_id = {student_id_input}", st.session_state.db_conn)
+                    if df_target.empty: message = "Data Inserted Successfully :)"
+                    else: message = "Data Updated Successfully :)"
+                    try: 
+                        if mental_health_history_input == False: mental_health_history = 0
+                        else: mental_health_history_input = 1 
+                        if student_id_input == -1:
+                            student_query = f"INSERT INTO Students (age, gender) VALUES ({age_input},'{gender_input}');"
+                            academic_query = f"INSERT INTO Academic (academic_performance, study_load, teacher_student_relationship, future_career_concerns) VALUES ({academic_performance_input}, {study_load_input}, {teacher_student_relationship_input}, {future_career_concerns_input});" 
+                            psychological_query = f"INSERT INTO Psychological (anxiety_level, self_esteem, mental_health_history, depression) VALUES ({anxiety_level_input}, {self_esteem_input}, {mental_health_history_input}, {depression_input});"
+                            physiological_query = f"INSERT INTO Physiological (blood_pressure, breathing_problem, sleep_quality, headache) VALUES ({blood_pressure_input}, {breathing_problem_input}, {sleep_quality_input}, {headache_input});" 
                         else:
-                            cursor.execute(f"INSERT OR REPLACE INTO Students (student_id, age, gender) VALUES ({sid}, {age}, '{gender}')")
-                            msg = "Updated Student Record"
-
-                        # Update other tables
-                        queries = [
-                            f"INSERT OR REPLACE INTO Academic VALUES ({target_id}, {ac_perf}, {load}, {rel}, {career})",
-                            f"INSERT OR REPLACE INTO Psychological VALUES ({target_id}, {anx}, {est}, {hist_val}, {dep})",
-                            f"INSERT OR REPLACE INTO Physiological VALUES ({target_id}, {bp}, {breath}, {sleep}, {head})"
-                        ]
-                        for q in queries: cursor.execute(q)
-                        
+                            student_query = f"""INSERT INTO Students VALUES ({student_id_input}, {age_input}, '{gender_input}') 
+                            ON CONFLICT(student_id) DO UPDATE SET 
+                            age = excluded.age, 
+                            gender = excluded.gender;"""
+                            academic_query = f"""INSERT INTO Academic VALUES ({student_id_input}, {academic_performance_input}, {study_load_input}, {teacher_student_relationship_input}, {future_career_concerns_input}) 
+                            ON CONFLICT (student_id) DO UPDATE SET 
+                            academic_performance = excluded.academic_performance,
+                            study_load = excluded.study_load,
+                            teacher_student_relationship = excluded.teacher_student_relationship,
+                            future_career_concerns = excluded.future_career_concerns;"""
+                            psychological_query = f"""INSERT INTO Psychological VALUES ({student_id_input}, {anxiety_level_input}, {self_esteem_input}, {mental_health_history_input}, {depression_input})
+                            ON CONFLICT (student_id) DO UPDATE SET
+                            anxiety_level = excluded.anxiety_level,
+                            self_esteem = excluded.self_esteem,
+                            mental_health_history = excluded.mental_health_history,
+                            depression = excluded.depression;"""
+                            physiological_query = f"""INSERT INTO Physiological VALUES ({student_id_input}, {blood_pressure_input}, {breathing_problem_input}, {sleep_quality_input}, {headache_input})
+                            ON CONFLICT (student_id) DO UPDATE SET
+                            blood_pressure = excluded.blood_pressure,
+                            breathing_problem = excluded.breathing_problem,
+                            sleep_quality = excluded.sleep_quality,
+                            headache = excluded.headache;"""
+                        st.session_state.db_conn.execute(student_query)
+                        st.session_state.db_conn.execute(academic_query)
+                        st.session_state.db_conn.execute(psychological_query)
+                        st.session_state.db_conn.execute(physiological_query)
                         st.session_state.db_conn.commit()
-                        st.success(msg)
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
+                        st.success(message)
+                    except:
+                        st.error("There is an error in the insertion data. Please double check your inputs")
+                    
             with data_deletions:
-                del_id = st.number_input("Delete ID", min_value=0)
-                if st.button("Delete Record"):
-                    try:
-                        for t in ["Academic", "Psychological", "Physiological", "Students"]:
-                            st.session_state.db_conn.execute(f"DELETE FROM {t} WHERE student_id={del_id}")
+                targeted_id = st.number_input("Student ID", step=1, min_value=0)
+                if st.button("Delete Data Record"):
+                    df_target = pd.read_sql(f"SELECT * FROM Students WHERE student_id={targeted_id};", st.session_state.db_conn)
+                    if df_target.empty:
+                        st.error("Record not found")
+                    else:
+                        academic_query = f"DELETE FROM Academic WHERE student_id={targeted_id};"
+                        psychological_query = f"DELETE FROM Psychological WHERE student_id={targeted_id};"
+                        physiological_query = f"DELETE FROM Physiological WHERE student_id={targeted_id};"
+                        student_query = f"DELETE FROM Students WHERE student_id={targeted_id};"
+                        st.session_state.db_conn.execute(academic_query)
+                        st.session_state.db_conn.execute(psychological_query)
+                        st.session_state.db_conn.execute(physiological_query)
+                        st.session_state.db_conn.execute(student_query)
                         st.session_state.db_conn.commit()
-                        st.success("Deleted.")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.success("Data record deleted successfully")
+        else:
+            st.write("Please upload a file")
 
-# ----------------- AGGREGATE FUNCTION (BULLETPROOF FIX) ----------------------
+# ----------------- AGGREGATE FUNCTION ----------------------
 def argument_builder(dataframe, x_axis, y_axis, aggregate):
-    if dataframe.empty: return dataframe
-    
-    # 1. Handle Count (Simple count of rows per group)
-    if aggregate == "Count":
-        return dataframe.groupby(x_axis).size().reset_index(name='Count')
-    
     if y_axis == "None":
-        return dataframe
-    
-    # 2. CRITICAL FIX: Force Y-Axis to Numeric AND Drop Bad Data
-    # We work on a COPY (df_temp), not the original dataframe.
-    df_temp = dataframe.copy()
-    
-    # 'coerce' turns text into NaN (empty)
-    if aggregate in ["Avg", "Sum", "Max", "Min"]:
-        df_temp[y_axis] = pd.to_numeric(df_temp[y_axis], errors='coerce')
-        # DROP rows where Y became NaN. If we don't, mean() might still trip up on some versions.
-        df_temp = df_temp.dropna(subset=[y_axis])
-
-    if df_temp.empty:
-        return pd.DataFrame(columns=[x_axis, y_axis])
-
-    # 3. Perform Aggregation on the CLEANED dataframe (df_temp)
-    grouper = df_temp.groupby(x_axis)[y_axis]
-    
+        match aggregate:
+            case "Max": return dataframe[x_axis].max()
+            case "Min": return dataframe[x_axis].min()
+            case "Avg": return dataframe[x_axis].mean()
+            case "Sum": return dataframe[x_axis].sum()
+            case "Count": return dataframe[x_axis].count()
+            case "None": return dataframe
     match aggregate:
-        case "Max": return grouper.max().reset_index()
-        case "Min": return grouper.min().reset_index()
-        case "Avg": return grouper.mean().reset_index()
-        case "Sum": return grouper.sum().reset_index()
-        case _: return dataframe
+        case "Max": return dataframe.groupby(x_axis)[y_axis].max().reset_index()
+        case "Min": return dataframe.groupby(x_axis)[y_axis].min().reset_index()
+        case "Avg": return dataframe.groupby(x_axis)[y_axis].mean().reset_index()
+        case "Sum": return dataframe.groupby(x_axis)[y_axis].sum().reset_index()
+        case "Count": return dataframe.groupby(x_axis)[y_axis].count().reset_index()
+        case "None": return dataframe
 
 # ----------------- DATA ANALYSIS TAB ----------------------
 with tab_data_analysis:
     analysis_tab, saved_tab = st.tabs(["Analyze Data", "Saved Graphs"])
 
+    # ----------- ANALYZE DATA TAB ---------------
     with analysis_tab:
-        if st.session_state.db_valid and not st.session_state.global_df.empty:
+        if st.session_state.db_valid:
             df = st.session_state.global_df
+            
+            # Populate options based on columns
             opts = list(df.columns) 
 
-            x_axis = st.selectbox("X-Axis", opts)
-            y_axis = st.selectbox("Y-Axis", ["None"] + opts)
+            x_axis = st.selectbox(label="X-Axis", options=opts)
+            y_axis = st.selectbox(label="Y-Axis", options=["None"] + opts)
             
-            st.caption("Select Y-Axis = 'None' if using Count")
+            st.caption("Tip: Leave Y-Axis as 'None' if you just want to count the frequency of X-Axis items.")
             
-            agg_func = st.selectbox("Function", ["None", "Max", "Min", "Avg", "Sum", "Count"])
+            aggregate_function = st.selectbox(label="Aggregate Function", options=["None", "Max", "Min", "Avg", "Sum", "Count"])
 
-            if st.button("Graph"):
-                if agg_func != "Count" and (y_axis == "None" or y_axis == x_axis):
-                     st.error("For Math (Max/Min/Avg/Sum), please choose a numeric Y-Axis.")
-                else:
-                    st.session_state.graph_data = argument_builder(df, x_axis, y_axis, agg_func)
+            if y_axis == x_axis:
+                st.error("Please choose two different axes")
+
+            elif y_axis == "None":
+                # Handle single column aggregation
+                aggregate = argument_builder(df, x_axis, y_axis, aggregate_function)
+                match aggregate_function:
+                    case "Max": st.write(f"Maximum: {aggregate}")
+                    case "Min": st.write(f"Minimum: {aggregate}")
+                    case "Avg": st.write(f"Global Average: {aggregate}")
+                    case "Sum": st.write(f"Global Sum: {aggregate}")
+                    case "Count": st.write(f"Global Count: {aggregate}")
+
+            else:
+                # --- GRAPH BUTTON ---
+                if st.button("Graph"):
+                    st.session_state.graph_data = argument_builder(df, x_axis, y_axis, aggregate_function)
                     st.session_state.graph_x = x_axis
-                    st.session_state.graph_y = "Count" if agg_func == "Count" else y_axis
-                    st.session_state.graph_agg = agg_func
+                    st.session_state.graph_y = y_axis
+                    st.session_state.graph_agg = aggregate_function
                     st.session_state.graph_ready = True
 
-            if st.session_state.get("graph_ready"):
-                res = st.session_state.graph_data
-                gx = st.session_state.graph_x
-                gy = st.session_state.graph_y
-                
-                st.dataframe(res)
-                st.bar_chart(data=res, x=gx, y=gy)
+                # --- SHOW GRAPH ---
+                if st.session_state.get("graph_ready", False):
+                    df_grouped = st.session_state.graph_data
+                    st.dataframe(df_grouped)
 
-                if st.button("Save Graph to Gallery"):
-                    fig, ax = plt.subplots()
-                    # Convert X to string to ensure categories plot correctly
-                    ax.bar(res[gx].astype(str), res[gy])
-                    ax.set_xlabel(gx)
-                    ax.set_ylabel(gy)
-                    ax.set_title(f"{st.session_state.graph_agg} of {gy} by {gx}")
-                    plt.xticks(rotation=45)
-                    
-                    img = BytesIO()
-                    fig.savefig(img, format="png", bbox_inches='tight')
-                    img.seek(0)
-                    plt.close(fig)
+                    # Display Global Stats safely
+                    try:
+                        match st.session_state.graph_agg:
+                            case "Max": st.write(f"Global Maximum: {df[y_axis].max()}")
+                            case "Min": st.write(f"Global Minimum: {df[y_axis].min()}")
+                            case "Avg": st.write(f"Global Average: {df[y_axis].mean()}")
+                            case "Sum": st.write(f"Global Sum: {df[y_axis].sum()}")
+                            case "Count": st.write(f"Global Count: {df[y_axis].count()}")
+                    except TypeError:
+                        st.warning(f"Could not calculate {st.session_state.graph_agg} for {y_axis} (likely text data).")
 
-                    st.session_state.saved_graphs.append({
-                        "title": f"{st.session_state.graph_agg} - {gx} vs {gy}", 
-                        "image": img
-                    })
-                    st.success("Saved!")
+                    st.bar_chart(
+                        data=df_grouped,
+                        x=st.session_state.graph_x,
+                        x_label=st.session_state.graph_x,
+                        y=st.session_state.graph_y,
+                        y_label=st.session_state.graph_y
+                    )
+
+                    # --- SAVE BUTTON ---
+                    if st.button("Save This Graph"):
+                        # Create figure explicitly to avoid threading issues
+                        fig, ax = plt.subplots()
+                        ax.bar(df_grouped[st.session_state.graph_x], df_grouped[st.session_state.graph_y])
+                        ax.set_xlabel(st.session_state.graph_x)
+                        ax.set_ylabel(st.session_state.graph_y)
+                        ax.set_title(f"{st.session_state.graph_x} vs {st.session_state.graph_y}")
+                        
+                        img_bytes = BytesIO()
+                        fig.savefig(img_bytes, format="png")
+                        img_bytes.seek(0)
+                        plt.close(fig)
+
+                        st.session_state.saved_graphs.append({
+                            "title": f"{st.session_state.graph_x} vs {st.session_state.graph_y} ({st.session_state.graph_agg})", 
+                            "image": img_bytes
+                        })
+                        st.success("Graph saved!")
 
         else:
-            st.info("Please load data first.")
+            st.write("Please input a file in the data management tab")
 
-    # ----------- SAVED GRAPHS DISPLAY (WITH EXPORT) ---------------
+    # ----------- SAVED GRAPHS TAB ---------------
     with saved_tab:
         if not st.session_state.saved_graphs:
-            st.info("No graphs saved.")
+            st.info("No graphs saved yet.")
         else:
-            st.markdown("### Saved Graphs")
             for i, graph in enumerate(st.session_state.saved_graphs):
                 st.divider()
-                # Create 3 columns: 1 for image, 1 for download, 1 for delete
-                col1, col2, col3 = st.columns([4, 2, 1])
-                
+                col1, col2 = st.columns([3, 1])
                 with col1:
                     st.subheader(graph["title"])
                     st.image(graph["image"])
-                
                 with col2:
-                    # INDIVIDUAL DOWNLOAD BUTTON
-                    st.download_button(
-                        label="Download PNG",
-                        data=graph["image"],
-                        file_name=f"graph_{i}.png",
-                        mime="image/png",
-                        key=f"dl_{i}"
-                    )
-                
-                with col3:
                     if st.button("Delete", key=f"del_{i}"):
                         st.session_state.saved_graphs.pop(i)
                         st.rerun()
