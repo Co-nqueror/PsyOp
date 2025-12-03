@@ -411,7 +411,7 @@ with tab_data_analysis:
                         case "Count": st.write(f"Global Count: {aggregate}")
 
             else:
-            # --- GRAPH BUTTON ---
+                # --- GRAPH BUTTON ---
                 data = argument_builder(df, x_axis, y_axis, aggregate_function)
                 
                 if data is None:
